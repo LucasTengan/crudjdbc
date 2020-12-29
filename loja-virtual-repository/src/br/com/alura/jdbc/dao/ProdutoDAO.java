@@ -19,12 +19,34 @@ public class ProdutoDAO {
 		this.connection = connection;
 	}
 
-	public void salvar(Produto produto) throws SQLException {
-		String sql = "INSERT INTO PRODUTO (NOME, DESCRICAO) VALUES (?,?)";
+	public void salvar(Produto produto) {
+		try {
+			String sql = "INSERT INTO PRODUTO (NOME, DESCRICAO) VALUES (?,?)";
+	
+			try (PreparedStatement pstm = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+				pstm.setString(1, produto.getNome());
+				pstm.setString(2, produto.getDescricao());
+	
+				pstm.execute();
+	
+				try (ResultSet rst = pstm.getGeneratedKeys()) {
+					while (rst.next()) {
+						produto.setId(rst.getInt(1));
+					}
+				}
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
+	public void salvarComCategoria(Produto produto) throws SQLException {
+		String sql = "INSERT INTO PRODUTO (NOME, DESCRICAO, CATEGORIA_ID) VALUES (?, ?, ?)";
 		try (PreparedStatement pstm = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
 			pstm.setString(1, produto.getNome());
 			pstm.setString(2, produto.getDescricao());
+			pstm.setInt(3, produto.getCategoriaId());
 
 			pstm.execute();
 
@@ -36,42 +58,76 @@ public class ProdutoDAO {
 		}
 	}
 
-	public List<Produto> listar() throws SQLException {
-		List<Produto> produtos = new ArrayList<Produto>();
-
-		String sql = "SELECT * FROM PRODUTO";
-
-		try (PreparedStatement pstm = connection.prepareStatement(sql)) {
-			pstm.execute();
-
-			try (ResultSet rst = pstm.getResultSet()) {
-				while (rst.next()) {
-					Produto produto = new Produto(rst.getInt(1), rst.getString(2), rst.getString(3));
-
-					produtos.add(produto);
-				}
+	public List<Produto> listar() {
+		try {
+			List<Produto> produtos = new ArrayList<Produto>();
+	
+			String sql = "SELECT * FROM PRODUTO";
+	
+			try (PreparedStatement pstm = connection.prepareStatement(sql)) {
+				pstm.execute();
+	
+				transformarResultSetEmProduto(produtos, pstm);
 			}
+			return produtos;
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
 		}
-		return produtos;
 	}
 
-	public List<Produto> buscar(Categoria ct) throws SQLException {
-		List<Produto> produtos = new ArrayList<Produto>();
+	public List<Produto> buscar(Categoria ct) {
+		try {
+			List<Produto> produtos = new ArrayList<Produto>();
+	
+			String sql = "SELECT * FROM PRODUTO WHERE CATEGORIA_ID = ?";
+	
+			try (PreparedStatement pstm = connection.prepareStatement(sql)) {
+				pstm.setInt(1, ct.getId());
+				pstm.execute();
+	
+				transformarResultSetEmProduto(produtos, pstm);
+			}
+			return produtos;
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-		String sql = "SELECT * FROM PRODUTO WHERE CATEGORIA_ID = ?";
+	public void deletar(Integer id) {
+		try {
+			String sql = "DELETE FROM PRODUTO WHERE ID = ?";
+	
+			try (PreparedStatement stm = connection.prepareStatement(sql)) {
+				stm.setInt(1, id);
+				stm.execute();
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-		try (PreparedStatement pstm = connection.prepareStatement(sql)) {
-			pstm.setInt(1, ct.getId());
-			pstm.execute();
+	public void alterar(String nome, String descricao, Integer id) {
+		try {
+			String sql = "UPDATE PRODUTO P SET P.NOME = ?, P.DESCRICAO = ? WHERE ID = ?";
+	
+			try (PreparedStatement stm = connection.prepareStatement(sql)) {
+				stm.setString(1, nome);
+				stm.setString(2, descricao);
+				stm.setInt(3, id);
+				stm.execute();
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-			try (ResultSet rst = pstm.getResultSet()) {
-				while (rst.next()) {
-					Produto produto = new Produto(rst.getInt(1), rst.getString(2), rst.getString(3));
+	private void transformarResultSetEmProduto(List<Produto> produtos, PreparedStatement pstm) throws SQLException {
+		try (ResultSet rst = pstm.getResultSet()) {
+			while (rst.next()) {
+				Produto produto = new Produto(rst.getInt(1), rst.getString(2), rst.getString(3));
 
-					produtos.add(produto);
-				}
+				produtos.add(produto);
 			}
 		}
-		return produtos;
 	}
 }

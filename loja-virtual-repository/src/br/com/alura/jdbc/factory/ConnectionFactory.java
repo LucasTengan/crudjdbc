@@ -1,6 +1,5 @@
-package br.com.alura.jdbc;
+package br.com.alura.jdbc.factory;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import javax.sql.DataSource;
@@ -22,7 +21,11 @@ public class ConnectionFactory {
 		this.dataSource = comboPooledDataSource;
 	}
 	
-	public Connection recuperarConexa() throws SQLException {
-		return this.dataSource.getConnection();
+	public Connection recuperarConexa() {
+		try {
+			return this.dataSource.getConnection();
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }
